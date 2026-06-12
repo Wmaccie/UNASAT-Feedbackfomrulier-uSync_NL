@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>uSync Afstudeer Feedbackformulieren</title>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
+:root {
+  --ink: #0f1923; --paper: #f7f4ef; --accent: #2a5caa;
+  --accent-light: #e8eef8; --border: #d6cfc4; --muted: #8a8278;
+  --success: #2e7d5a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; }
+header { background: var(--ink); color: var(--paper); padding: 20px 32px; display: flex; align-items: center; gap: 16px; }
+.logo { font-family: 'DM Serif Display', serif; font-size: 1.4rem; letter-spacing: -0.5px; }
+.logo span { color: #6fa3e8; }
+header p { font-size: 0.8rem; color: #aab4c0; margin-top: 2px; }
+.container { max-width: 780px; margin: 0 auto; padding: 36px 24px 80px; }
+.steps { display: flex; margin-bottom: 36px; border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; }
+.step { flex: 1; padding: 12px 8px; text-align: center; font-size: 0.75rem; font-weight: 500; color: var(--muted); background: white; border-right: 1.5px solid var(--border); transition: all 0.2s; }
+.step:last-child { border-right: none; }
+.step.active { background: var(--accent); color: white; }
+.step.done { background: var(--accent-light); color: var(--accent); }
+.step-num { display: block; font-size: 1rem; font-weight: 600; }
+.card { background: white; border: 1.5px solid var(--border); border-radius: 12px; padding: 28px; margin-bottom: 20px; }
+.card h2 { font-family: 'DM Serif Display', serif; font-size: 1.3rem; margin-bottom: 6px; }
+.card-desc { font-size: 0.82rem; color: var(--muted); margin-bottom: 20px; line-height: 1.5; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field.full { grid-column: 1 / -1; }
+label { font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+input[type=text], textarea { border: 1.5px solid var(--border); border-radius: 7px; padding: 10px 12px; font-size: 0.9rem; font-family: 'DM Sans', sans-serif; color: var(--ink); background: var(--paper); transition: border-color 0.2s; }
+input[type=text]:focus, textarea:focus { outline: none; border-color: var(--accent); background: white; }
+textarea { resize: vertical; min-height: 60px; }
+.competentie-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.comp-btn { border: 1.5px solid var(--border); border-radius: 8px; padding: 12px 14px; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500; color: var(--ink); background: var(--paper); cursor: pointer; text-align: left; transition: all 0.15s; }
+.comp-btn:hover { border-color: var(--accent); background: var(--accent-light); }
+.comp-btn.selected { border-color: var(--accent); background: var(--accent); color: white; }
+.comp-btn .comp-icon { font-size: 1.1rem; display: block; margin-bottom: 3px; }
+.scale-section { margin-bottom: 24px; }
+.scale-label { font-size: 0.8rem; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; padding: 6px 10px; background: var(--accent-light); border-radius: 5px; display: inline-block; }
+.scale-row { display: flex; align-items: stretch; margin-bottom: 10px; border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; }
+.scale-left { flex: 1; padding: 10px 12px; font-size: 0.78rem; color: var(--muted); background: #fafaf8; line-height: 1.4; border-right: 1px solid var(--border); }
+.scale-dots { display: flex; align-items: center; padding: 8px 10px; gap: 6px; background: white; border-right: 1px solid var(--border); }
+.dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; font-size: 0.7rem; font-weight: 600; color: var(--muted); display: flex; align-items: center; justify-content: center; transition: all 0.15s; background: white; }
+.dot:hover { border-color: var(--accent); color: var(--accent); }
+.dot.selected { background: var(--accent); border-color: var(--accent); color: white; }
+.scale-right { flex: 1; padding: 10px 12px; font-size: 0.78rem; color: var(--ink); font-weight: 500; line-height: 1.4; }
+.overall-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--ink); border-radius: 8px; margin-top: 16px; color: white; }
+.overall-row span { font-size: 0.85rem; font-weight: 600; }
+.overall-dots { display: flex; gap: 8px; }
+.overall-dot { width: 34px; height: 34px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); cursor: pointer; font-size: 0.75rem; font-weight: 700; color: rgba(255,255,255,0.6); display: flex; align-items: center; justify-content: center; transition: all 0.15s; background: transparent; }
+.overall-dot:hover { border-color: #6fa3e8; color: #6fa3e8; }
+.overall-dot.selected { background: #6fa3e8; border-color: #6fa3e8; color: var(--ink); }
+.feedback-section { margin-top: 20px; display: flex; flex-direction: column; gap: 12px; }
+.feedback-section label { font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.sig-wrap { border: 2px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 10px; background: #1a1a2e; }
+#sig-canvas { display: block; width: 100%; height: 180px; touch-action: none; cursor: crosshair; }
+.sig-hint { font-size: 0.75rem; color: var(--muted); margin-bottom: 8px; }
+.sig-actions { display: flex; gap: 8px; margin-top: 8px; }
+.btn-clear { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; padding: 7px 14px; border: 1.5px solid var(--border); border-radius: 6px; background: white; cursor: pointer; color: var(--muted); }
+.btn-clear:hover { border-color: #c0392b; color: #c0392b; }
+.btn-primary { font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600; padding: 14px 28px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.15s; width: 100%; margin-top: 8px; }
+.btn-primary:hover { background: #1e4a8a; }
+.btn-primary:disabled { background: var(--border); cursor: not-allowed; }
+.btn-download { font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600; padding: 14px 28px; background: var(--success); color: white; border: none; border-radius: 8px; cursor: pointer; transition: all 0.15s; width: 100%; margin-top: 10px; }
+.btn-download:hover { background: #1e5c3a; }
+.btn-back { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; padding: 10px 20px; background: transparent; color: var(--muted); border: 1.5px solid var(--border); border-radius: 8px; cursor: pointer; margin-bottom: 16px; }
+.btn-back:hover { color: var(--ink); border-color: var(--ink); }
+.screen { display: none; }
+.screen.active { display: block; }
+.success-box { text-align: center; padding: 40px 20px; }
+.success-icon { width: 72px; height: 72px; background: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 2rem; color: white; }
+.success-box h2 { font-family: 'DM Serif Display', serif; font-size: 1.6rem; margin-bottom: 10px; }
+.success-box p { color: var(--muted); font-size: 0.9rem; line-height: 1.6; margin-bottom: 6px; }
+.na-btn { font-size: 0.65rem; padding: 4px 7px; border: 1.5px solid var(--border); border-radius: 4px; background: white; cursor: pointer; color: var(--muted); font-family: 'DM Sans', sans-serif; margin-left: 4px; }
+.na-btn.active { background: var(--muted); color: white; border-color: var(--muted); }
+.instructie { font-size: 0.8rem; color: var(--muted); background: var(--paper); border: 1px dashed var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 20px; line-height: 1.5; }
+@media (max-width: 600px) {
+  .field-row { grid-template-columns: 1fr; }
+  .competentie-grid { grid-template-columns: 1fr; }
+  .scale-row { flex-direction: column; }
+  .scale-dots { justify-content: center; border-right: none; border-top: 1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="logo">u<span>Sync</span> Afstudeer Feedbackformulieren</div>
+    <p>UNASAT — Afstudeerbeoordeling Feedbackformulier</p>
+  </div>
+</header>
+<div class="container">
+  <div class="steps">
+    <div class="step active" id="step1"><span class="step-num">1</span>Gegevens</div>
+    <div class="step" id="step2"><span class="step-num">2</span>Competentie</div>
+    <div class="step" id="step3"><span class="step-num">3</span>Beoordeling</div>
+    <div class="step" id="step4"><span class="step-num">4</span>Handtekening</div>
+  </div>
+
+  <div class="screen active" id="screen1">
+    <div class="card">
+      <h2>Uw gegevens</h2>
+      <p class="card-desc">Vul hieronder uw gegevens in. Het formulier wordt ingevuld voor Whitney Mac Intosh (BI/1121/027).</p>
+      <div class="field-row">
+        <div class="field"><label>Ingevuld door *</label><input type="text" id="invuller" placeholder="Uw volledige naam" /></div>
+        <div class="field"><label>Functie *</label><input type="text" id="functie" placeholder="bijv. Bedrijfsbegeleider" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field full"><label>Organisatie</label><input type="text" id="organisatie" placeholder="bijv. UNASAT" /></div>
+      </div>
+      <button class="btn-primary" onclick="goToStep2()">Volgende →</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen2">
+    <button class="btn-back" onclick="goBack(1)">← Terug</button>
+    <div class="card">
+      <h2>Kies de competentie</h2>
+      <p class="card-desc">Selecteer de competentie waarvoor u feedback geeft.</p>
+      <div class="competentie-grid" id="comp-grid"></div>
+      <button class="btn-primary" style="margin-top:20px" onclick="goToStep3()">Volgende →</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen3">
+    <button class="btn-back" onclick="goBack(2)">← Terug</button>
+    <div class="card">
+      <h2 id="form-title"></h2>
+      <p class="card-desc" id="form-desc"></p>
+      <p class="instructie">Kruis op onderstaande schalen tussen twee uiterste gedragingen aan welk gedrag u het meest herkent. Indien u m.b.t. een bepaald aspect geen beeld heeft, klik dan op <strong>N/A</strong>.</p>
+      <div id="schalen-container"></div>
+      <div class="overall-row">
+        <span id="overall-label-left">Weinig</span>
+        <div class="overall-dots" id="overall-dots"></div>
+        <span id="overall-label-right">Zeer</span>
+      </div>
+      <div class="feedback-section">
+        <div class="field">
+          <label>Dit gaat goed (toelichting met voorbeelden)</label>
+          <textarea id="gaat-goed" placeholder="Vul hier in wat goed gaat..."></textarea>
+        </div>
+        <div class="field">
+          <label>Tips</label>
+          <textarea id="tips" placeholder="Vul hier tips in..."></textarea>
+        </div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="goToStep4()">Volgende →</button>
+  </div>
+
+  <div class="screen" id="screen4">
+    <button class="btn-back" onclick="goBack(3)">← Terug</button>
+    <div class="card">
+      <h2>Handtekening & Verzenden</h2>
+      <p class="card-desc">Teken hieronder met uw muis of vinger.</p>
+      <p class="sig-hint">✍️ Teken in het donkere vak hieronder</p>
+      <div class="sig-wrap"><canvas id="sig-canvas"></canvas></div>
+      <div class="sig-actions"><button class="btn-clear" onclick="clearSig()">✕ Wissen</button></div>
+      <button class="btn-primary" id="send-btn" onclick="submitForm()" style="margin-top:20px">✉ Formulier Versturen</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen5">
+    <div class="card">
+      <div class="success-box">
+        <div class="success-icon">✓</div>
+        <h2>Bedankt!</h2>
+        <p>Uw feedback voor <strong id="success-comp"></strong> is verstuurd.</p>
+        <p style="font-size:0.8rem;">Whitney ontvangt een e-mail met bevestiging.</p>
+        <button class="btn-download" onclick="downloadPDF()">⬇ Download uw PDF kopie</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+emailjs.init("294rE7MWK8WnJ2rXY");
+
+// ── VOLLEDIGE DATA — EXACT OVERGENOMEN VAN ORIGINELE FORMULIEREN ──────────────
+const competenties = {
+  "Ondernemend gedrag": {
+    icon: "",
+    omschrijving: "Signaleert kansen en handelt hiernaar.",
+    overallLinks: "Is weinig ondernemend",
+    overallRechts: "Is zeer ondernemend",
+    secties: [
+      {
+        label: "Weinig proactief → Proactief",
+        items: [
+          { links: "Is afwachtend; is weinig oplossingsgericht wanneer zich problemen dreigen voor te doen", rechts: "Neemt initiatieven; anticipeert op mogelijke problemen en doet uit zichzelf pogingen een probleem op te lossen" },
+          { links: "Houdt vast aan bestaande werkwijze / methoden", rechts: "Past handelswijze aan indien omstandigheden dit vereisen" }
+        ]
+      },
+      {
+        label: "Weinig commercieel gericht → Commercieel gericht",
+        items: [
+          { links: "Is weinig naar buiten gericht; beperkt zich tot wat in de organisatie speelt", rechts: "Is zich bewust van activiteiten van concurrenten en van trends en ontwikkelingen in de markt" },
+          { links: "Denkt niet in kansen en mogelijkheden", rechts: "Signaleert profijtelijke kansen voor de organisatie en zet die om in het ontwikkelen van nieuwe diensten/producten/voorstellen" },
+          { links: "Heeft bij voorstellen en beslissingen weinig oog voor kosten(besparing), winst, rendement en groei", rechts: "Neemt factoren als kosten(besparing), winst, rendement en groei mee in voorstellen en beslissingen" }
+        ]
+      }
+    ]
+  },
+
+  "Besluitvaardigheid": {
+    icon: "",
+    omschrijving: "Neemt beslissingen door keuzes te maken en knopen door te hakken en de gevolgen daarvan te dragen.",
+    overallLinks: "Is weinig besluitvaardig",
+    overallRechts: "Is zeer besluitvaardig",
+    secties: [
+      {
+        label: "Weinig durf/daadkracht → Durf/daadkracht",
+        items: [
+          { links: "Wacht af tot anderen beslissen; blijft wikken en wegen", rechts: "Hakt tijdig knopen door, wacht niet af en maakt, indien nodig, keuzes op basis van beperkte informatie" },
+          { links: "Praat mee, volgt anderen in een discussie of dilemma", rechts: "Neemt in een discussie of dilemma duidelijk stelling" }
+        ]
+      },
+      {
+        label: "Weinig strategisch denkvermogen → Strategisch denkvermogen",
+        items: [
+          { links: "Heeft bij nemen van beslissingen weinig oog voor omstandigheden in de organisatie: geld, kennis, cultuur, machtsverhoudingen, tijd, werkwijze, etc.", rechts: "Houdt bij het nemen van beslissingen rekening met voorwaarden en omstandigheden in de organisatie: geld, kennis, cultuur, machtsverhoudingen, tijd, werkwijze, etc." },
+          { links: "Maakt keuzes zonder consequenties voor personen en processen te overdenken", rechts: "Overziet consequenties van beslissingen voor personen en processen" }
+        ]
+      }
+    ]
+  },
+
+  "Ontwikkelingsgericht vermogen": {
+    icon: "",
+    omschrijving: "Is in staat en gemotiveerd om van elke situatie te leren, onderneemt actie n.a.v. feedback en ervaringen. Is gericht op kennisontwikkeling, professionalisering van zichzelf en de beroepsgroep.",
+    overallLinks: "Is weinig ontwikkelingsgericht",
+    overallRechts: "Is zeer ontwikkelingsgericht",
+    secties: [
+      {
+        label: "Weinig reflecterend vermogen → Reflecterend vermogen",
+        items: [
+          { links: "Kan eigen opvattingen niet loslaten; is overtuigd van eigen opvattingen, stelt geen vragen", rechts: "Staat open voor andere visies en methoden: denkt mee, stelt vragen" },
+          { links: "Gaat feedback over eigen aanpak en resultaten uit de weg; sluit zich ervoor af", rechts: "Vraagt feedback over eigen aanpak en resultaten, is zelfkritisch" },
+          { links: "Heeft weinig zelfkennis m.b.t. sterktes en zwaktes van het eigen functioneren", rechts: "Brengt sterke en zwakke kanten van het eigen functioneren in kaart" }
+        ]
+      },
+      {
+        label: "Weinig zelfsturend vermogen → Zelfsturend vermogen",
+        items: [
+          { links: "Reflecteert niet op eigen gedrag; laat het kiezen/formuleren van ontwikkeldoelen en acties aan anderen over", rechts: "Reflecteert op eigen aanpak en formuleert op basis daarvan doelen en acties" },
+          { links: "Behandelt feedback als kritiek, niet als vertrekpunt voor verdere ontwikkeling", rechts: "Past gedrag zonodig aan op basis van feedback" },
+          { links: "Is zich niet bewust van de wijze waarop hij/zij leert en zichzelf ontwikkelt", rechts: "Heeft inzicht in wijze waarop hij/zij leert en wat nodig is voor de eigen ontwikkeling" }
+        ]
+      }
+    ]
+  },
+
+  "Innovatief vermogen": {
+    icon: "",
+    omschrijving: "Creëert nieuwe en originele ideeën, werkwijze en/of toepassingen.",
+    overallLinks: "Is weinig innovatief",
+    overallRechts: "Is zeer innovatief",
+    secties: [
+      {
+        label: "Weinig visie → Visie",
+        items: [
+          { links: "Is niet op de hoogte van trends, recente en toekomstige ontwikkelingen; betrekt deze niet in aanpak, oplossingen en adviezen", rechts: "Relateert aanpak, oplossingen en adviezen aan trends, recente en toekomstige ontwikkelingen" },
+          { links: "Geeft voorkeur aan korte termijn oplossingen", rechts: "Is gericht op de langere termijn, neemt afstand van korte termijn oplossingen" }
+        ]
+      },
+      {
+        label: "Weinig creatief → Creatief",
+        items: [
+          { links: "Gebruikt standaard oplossingen, vanuit voor de hand liggende perspectieven", rechts: "Komt met nieuwe, originele aanpak en oplossingen vanuit ongewone perspectieven" },
+          { links: "Heeft weinig nieuwe ideeën", rechts: "Produceert gemakkelijk ideeën" }
+        ]
+      }
+    ]
+  },
+
+  "Samenwerken": {
+    icon: "",
+    omschrijving: "Levert in een team een bijdrage aan gemeenschappelijke resultaten, is gericht op positieve werkrelaties, ondersteunt teamleden.",
+    overallLinks: "Is weinig gericht op samenwerken",
+    overallRechts: "Is zeer gericht op samenwerken",
+    secties: [
+      {
+        label: "Weinig taakgericht → Taakgericht",
+        items: [
+          { links: "Is alleen gericht op het uitvoeren van de eigen taak; is niet gericht op afstemming van eigen werkzaamheden met die van teamleden", rechts: "Levert actieve bijdrage aan structurering van het werk, waaronder afspraken over doelen, resultaten, werkwijze, deadlines, e.d." },
+          { links: "Houdt zich niet aan afspraken: m.b.t. voorbereiding, aanwezigheid, opleveren prestaties", rechts: "Komt afspraken na: is op tijd aanwezig, is voorbereid, levert prestaties volgens afspraken e.d." },
+          { links: "Stelt geen vragen over eigen bijdrage; staat niet open voor suggesties ter verbetering", rechts: "Evalueert eigen bijdrage kritisch: vraagt hoe het beter kan" },
+          { links: "Toont geen belangstelling voor bijdragen van anderen", rechts: "Evalueert bijdragen van anderen kritisch: stelt vragen, geeft opbouwende kritiek" },
+          { links: "Wacht af als deadlines niet gehaald dreigen te worden", rechts: "Onderneemt actie als deadlines niet gehaald dreigen te worden" }
+        ]
+      },
+      {
+        label: "Weinig teamgericht → Teamgericht",
+        items: [
+          { links: "Stelt zich afzijdig op, doet geen pogingen contact met anderen te maken", rechts: "Draagt bij aan goede sfeer: maakt contact, is tactvol, toont belangstelling, laat ieder tot zijn recht komen" },
+          { links: "Doet alleen eigen deel", rechts: "Ondersteunt teamleden: biedt gevraagd en ongevraagd hulp" },
+          { links: "Sluit zich af voor kritiek; schiet gelijk in de verdediging (ja, maar….)", rechts: "Staat open voor suggesties en kritiek van anderen" },
+          { links: "Stoort zich aan het gedrag van anderen en komt achteraf met kritiek", rechts: "Spreekt teamleden op constructieve wijze aan op het niet nakomen van afspraken en ander ongewenst gedrag" },
+          { links: "Blijft steken in klachten of bezwaren, gaat discussies uit de weg", rechts: "Stelt conflicten aan de orde op een open en oplossingsgerichte wijze" }
+        ]
+      }
+    ]
+  },
+
+  "Klantgerichtheid": {
+    icon: "",
+    omschrijving: "Richt het werk in naar de behoefte van de klant, zet zich in om aan wensen en verwachtingen van klanten te voldoen (rekening houdend met de mogelijkheden van de organisatie).",
+    overallLinks: "Is weinig klantgericht",
+    overallRechts: "Is zeer klantgericht",
+    secties: [
+      {
+        label: "Weinig klant- en servicegericht → Klant- en servicegericht",
+        items: [
+          { links: "Toont zich weinig bewust van de wensen van klanten", rechts: "Neemt wensen van klanten als uitgangspunt van activiteiten" },
+          { links: "Voelt zich niet verantwoordelijk voor vragen van klanten en collega's: vraagt niet door, schuift klachten af, denkt niet in oplossingen", rechts: "Reageert alert op verzoeken of vragen van klanten en collega's; reageert oplossings- gericht op klachten" },
+          { links: "Maakt geen duidelijke afspraken; doet beloftes die niet waar te maken zijn; is niet betrouwbaar in het nakomen van afspraken", rechts: "Maakt duidelijke afspraken met klanten en houdt zich daaraan" },
+          { links: "Vraagt niet door of aan verwachtingen van klanten is voldaan", rechts: "Checkt of aan verwachtingen is voldaan" }
+        ]
+      },
+      {
+        label: "Weinig relatiegericht → Relatiegericht",
+        items: [
+          { links: "Stelt klanten niet op hun gemak, laat geen goede (eerste) indruk achter", rechts: "Maakt makkelijk contact met klanten, laat een positieve (eerste) indruk achter" },
+          { links: "Gaat voorbij aan gevoelens en belangen van anderen; praat en klaagt over anderen en de organisatie achter hun rug om", rechts: "Is tactvol en diplomatiek; praat met respect over klanten, collega's en de organisatie" }
+        ]
+      }
+    ]
+  },
+
+  "Communicatief vermogen": {
+    icon: "",
+    omschrijving: "Communiceert effectief met diverse personen om gestelde doelen te bereiken.",
+    overallLinks: "Is weinig communicatief",
+    overallRechts: "Is zeer communicatief",
+    secties: [
+      {
+        label: "Weinig toegankelijk → Toegankelijk",
+        items: [
+          { links: "Is weinig samenhangend: breedsprakig, hoofd- en bijzaken moeilijk van elkaar te scheiden", rechts: "Hanteert bij communiceren een duidelijke en logische structuur: hoofdlijn is duidelijk" },
+          { links: "Is niet duidelijk, gebruikt (vak)taal vaak incorrect, stemt taalgebruik niet af op doelgroep", rechts: "Is begrijpelijk, gebruikt (vak)taal correct, stemt taalgebruik af op doelgroep" },
+          { links: "Bij mondeling: hapert regelmatig, is slecht verstaanbaar, te snel of te langzaam tempo", rechts: "Bij mondeling: spreekt vlot, hanteert goed tempo, is makkelijk verstaanbaar" },
+          { links: "Bij schriftelijk: veel grammatica- en spelfouten", rechts: "Bij schriftelijk: correcte grammatica en spelling" }
+        ]
+      },
+      {
+        label: "Weinig sensitief → Sensitief",
+        items: [
+          { links: "Reageert op anderen zonder zich in hun positie of motieven te verdiepen: stelt geen vragen, komt direct met eigen mening", rechts: "Reageert op anderen met begrip voor hun positie of motieven zonder meteen te oordelen" },
+          { links: "Begrijpt vaak niet wat anderen (bedoelen te) zeggen, weinig inlevingsvermogen", rechts: "Beschikt over inlevingsvermogen" },
+          { links: "Praat/klaagt achter de rug van anderen om; is aanvallend in de benadering van anderen", rechts: "Praat met respect over anderen; behandelt anderen met respect" },
+          { links: "Luistert slecht", rechts: "Luistert actief: stelt vragen, vat samen e.d." }
+        ]
+      },
+      {
+        label: "Weinig overtuigend → Overtuigend",
+        items: [
+          { links: "Onderbouwt standpunten niet; licht keuzes niet toe", rechts: "Onderbouwt standpunten met argumenten" },
+          { links: "Spreekt zichzelf vaak tegen, argumentatie kent hiaten", rechts: "Gebruikt argumenten consistent; argumentatie is volledig" },
+          { links: "Toont zich weinig betrokken (in houding, in gedrag) bij de eigen standpunten", rechts: "Toont zich betrokken bij de eigen standpunten" }
+        ]
+      }
+    ]
+  },
+
+  "Resultaatgerichtheid": {
+    icon: "",
+    omschrijving: "Is gericht op het bereiken van tastbare resultaten.",
+    overallLinks: "Is niet resultaatgericht",
+    overallRechts: "Is zeer resultaatgericht",
+    secties: [
+      {
+        label: "Niet doelgericht → Doelgericht",
+        items: [
+          { links: "Heeft geen duidelijk doel voor ogen", rechts: "Stelt (meetbare) doelen" },
+          { links: "Werkt ongestructureerd, chaotisch", rechts: "Werkt planmatig; maakt afspraken over resultaten, werkwijze, deadlines" },
+          { links: "Controleert niet of hij/zij nog op de goede weg is", rechts: "Bewaakt voortgang, controleert of hij/zij nog op de goede weg is" }
+        ]
+      },
+      {
+        label: "Niet probleemoplossend → Probleemoplossend",
+        items: [
+          { links: "Blijft regelmatig steken in klachten of bezwaren", rechts: "Onderneemt zelf actie bij problemen" },
+          { links: "Controleert niet of oplossingen daadwerkelijk worden uitgevoerd", rechts: "Bewaakt of oplossingen worden uitgevoerd" }
+        ]
+      },
+      {
+        label: "Niet efficiënt → Efficiënt",
+        items: [
+          { links: "Is onduidelijk over prioriteiten", rechts: "Stelt prioriteiten" },
+          { links: "Denkt niet in termen van 'tijd=geld', werkt omslachtig", rechts: "Vertaalt activiteiten naar financiële middelen ('tijd=geld')" },
+          { links: "Geen balans tussen kosten en baten, tussen inspanning en resultaat, tussen ambitie en realiteit", rechts: "Vindt balans tussen kosten en baten, tussen inspanning en resultaat, tussen ambitie en realiteit" }
+        ]
+      }
+    ]
+  },
+
+  "Vakkundigheid": {
+    icon: "",
+    omschrijving: "Signaleert en analyseert beroepsvraagstukken en komt tot beredeneerde oordelen en oplossingen, gebruikmakend van relevante en actuele kennis.",
+    overallLinks: "Is weinig vakkundig",
+    overallRechts: "Is zeer vakkundig",
+    secties: [
+      {
+        label: "Weinig onderzoekend → Onderzoekend",
+        items: [
+          { links: "Toont neiging tot 'jumping-to-conclusions', verzuimt om eerst voldoende relevante informatie m.b.t. een vraagstuk te verzamelen", rechts: "Is gericht op verzamelen van relevante en aanvullende informatie m.b.t. vraagstuk: stelt vragen, gebruikt diverse bronnen" },
+          { links: "Neemt informatie (te) snel voor 'waar' aan: controleert informatie niet", rechts: "Bekijkt verzamelde informatie kritisch: vraagt door, checkt informatie bij anderen" }
+        ]
+      },
+      {
+        label: "Weinig analytisch → Analytisch",
+        items: [
+          { links: "Heeft moeite om hoofd- van bijzaken te onderscheiden, brengt geen structuur aan in complexe informatie", rechts: "Ordent complexe info: scheidt hoofd- van bijzaken, scheidt feiten van meningen" },
+          { links: "Heeft moeite om de essentie uit cijfermatige gegevens te halen, of slaat cijfers als belangrijke bron bij voorkeur over", rechts: "Haalt de essentie uit cijfermatige gegevens" },
+          { links: "Legt geen verbanden tussen gegevens, of verkeerde verbanden: haalt bijvoorbeeld oorzaak en gevolg door elkaar", rechts: "Legt verbanden tussen (cijfermatige) gegevens, stelt oorzaak-gevolg vast" }
+        ]
+      },
+      {
+        label: "Weinig conceptueel → Conceptueel",
+        items: [
+          { links: "Is niet bekend met actuele en relevante theorieën en/of technieken om vraagstuk aan te pakken; of maakt hier geen gebruik van", rechts: "Betrekt relevante theorie bij analyse en oplossing van vraagstukken" },
+          { links: "Past relevante begrippen en theorie verkeerd toe", rechts: "Past relevante begrippen en theorie correct toe" }
+        ]
+      },
+      {
+        label: "Weinig oordeelsvermogen → Oordeelsvermogen",
+        items: [
+          { links: "Trekt geen conclusies, of onduidelijk is waarop conclusies zijn gebaseerd", rechts: "Trekt conclusies gebaseerd op voortgaande analyse" },
+          { links: "Gebruikt geen criteria om oplossingen met elkaar te vergelijken", rechts: "Beoordeelt oplossingen op basis van duidelijke criteria" },
+          { links: "Denkt meestal niet na over mogelijke tegenargumenten", rechts: "Betrekt mogelijke tegenargumenten bij oordelen" }
+        ]
+      }
+    ]
+  }
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let selectedComp = null;
+let ratings = {};
+let overallRating = null;
+let isDrawing = false;
+let lastX = 0, lastY = 0;
+let ctx = null;
+
+window.onload = () => { buildCompGrid(); };
+
+function buildCompGrid() {
+  const grid = document.getElementById('comp-grid');
+  grid.innerHTML = '';
+  Object.entries(competenties).forEach(([name, data]) => {
+    const btn = document.createElement('button');
+    btn.className = 'comp-btn' + (selectedComp === name ? ' selected' : '');
+    btn.innerHTML = `<span class="comp-icon">${data.icon}</span>${name}`;
+    btn.onclick = () => {
+      selectedComp = name;
+      document.querySelectorAll('.comp-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+    grid.appendChild(btn);
+  });
+}
+
+function initCanvas() {
+  const canvas = document.getElementById('sig-canvas');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvas.offsetWidth * dpr;
+  canvas.height = canvas.offsetHeight * dpr;
+  ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches) return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+  canvas.addEventListener('mousedown', e => { isDrawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; });
+  canvas.addEventListener('mousemove', e => { if (!isDrawing) return; const p = getPos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke(); lastX = p.x; lastY = p.y; });
+  canvas.addEventListener('mouseup', () => isDrawing = false);
+  canvas.addEventListener('mouseleave', () => isDrawing = false);
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); isDrawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; }, { passive: false });
+  canvas.addEventListener('touchmove', e => { e.preventDefault(); if (!isDrawing) return; const p = getPos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke(); lastX = p.x; lastY = p.y; }, { passive: false });
+  canvas.addEventListener('touchend', () => isDrawing = false);
+}
+
+function clearSig() {
+  const canvas = document.getElementById('sig-canvas');
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+}
+
+function isCanvasEmpty() {
+  const canvas = document.getElementById('sig-canvas');
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i] > 30 || data[i+1] > 30 || data[i+2] > 60) return false;
+  }
+  return true;
+}
+
+function buildSchalen(comp) {
+  const data = competenties[comp];
+  const container = document.getElementById('schalen-container');
+  container.innerHTML = '';
+  ratings = {};
+  data.secties.forEach((sectie, si) => {
+    const lbl = document.createElement('div');
+    lbl.className = 'scale-label';
+    lbl.textContent = sectie.label;
+    container.appendChild(lbl);
+    const section = document.createElement('div');
+    section.className = 'scale-section';
+    sectie.items.forEach((item, ii) => {
+      const key = `s${si}_i${ii}`;
+      ratings[key] = null;
+      const row = document.createElement('div');
+      row.className = 'scale-row';
+      const left = document.createElement('div'); left.className = 'scale-left'; left.textContent = item.links;
+      const dotsWrap = document.createElement('div'); dotsWrap.className = 'scale-dots';
+      for (let d = 1; d <= 5; d++) {
+        const dot = document.createElement('button'); dot.className = 'dot'; dot.textContent = d;
+        dot.onclick = () => { ratings[key] = d; dotsWrap.querySelectorAll('.dot').forEach(x => x.classList.remove('selected')); naBtn.classList.remove('active'); dot.classList.add('selected'); };
+        dotsWrap.appendChild(dot);
+      }
+      const naBtn = document.createElement('button'); naBtn.className = 'na-btn'; naBtn.textContent = 'N/A';
+      naBtn.onclick = () => { ratings[key] = 'N/A'; dotsWrap.querySelectorAll('.dot').forEach(x => x.classList.remove('selected')); naBtn.classList.add('active'); };
+      dotsWrap.appendChild(naBtn);
+      const right = document.createElement('div'); right.className = 'scale-right'; right.textContent = item.rechts;
+      row.appendChild(left); row.appendChild(dotsWrap); row.appendChild(right);
+      section.appendChild(row);
+    });
+    container.appendChild(section);
+  });
+  document.getElementById('overall-label-left').textContent = data.overallLinks;
+  document.getElementById('overall-label-right').textContent = data.overallRechts;
+  const od = document.getElementById('overall-dots'); od.innerHTML = ''; overallRating = null;
+  for (let d = 1; d <= 5; d++) {
+    const dot = document.createElement('button'); dot.className = 'overall-dot'; dot.textContent = d;
+    dot.onclick = () => { overallRating = d; od.querySelectorAll('.overall-dot').forEach(x => x.classList.remove('selected')); dot.classList.add('selected'); };
+    od.appendChild(dot);
+  }
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) document.getElementById('step' + i).className = 'step' + (i === n ? ' active' : i < n ? ' done' : '');
+  for (let i = 1; i <= 5; i++) document.getElementById('screen' + i).className = 'screen' + (i === n ? ' active' : '');
+  window.scrollTo(0, 0);
+}
+
+function goBack(to) { setStep(to); }
+
+function goToStep2() {
+  if (!document.getElementById('invuller').value.trim() || !document.getElementById('functie').value.trim()) { alert('Vul uw naam en functie in.'); return; }
+  buildCompGrid(); setStep(2);
+}
+
+function goToStep3() {
+  if (!selectedComp) { alert('Selecteer een competentie.'); return; }
+  document.getElementById('form-title').textContent = competenties[selectedComp].icon + ' ' + selectedComp;
+  document.getElementById('form-desc').textContent = competenties[selectedComp].omschrijving;
+  document.getElementById('gaat-goed').value = '';
+  document.getElementById('tips').value = '';
+  buildSchalen(selectedComp); setStep(3);
+}
+
+function goToStep4() {
+  if (!Object.values(ratings).every(v => v !== null)) { alert('Beoordeel alle schalen (of kies N/A).'); return; }
+  if (!overallRating) { alert('Geef ook een overall beoordeling.'); return; }
+  setStep(4);
+  setTimeout(() => initCanvas(), 100);
+}
+
+function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const invuller = document.getElementById('invuller').value;
+  const functie = document.getElementById('functie').value;
+  const organisatie = document.getElementById('organisatie').value || 'n.v.t.';
+  const datum = new Date().toLocaleDateString('nl-NL');
+  const gaatGoed = document.getElementById('gaat-goed').value || '-';
+  const tips = document.getElementById('tips').value || '-';
+  const data = competenties[selectedComp];
+  const W = 210; const margin = 18;
+  let y = 20;
+
+  doc.setFillColor(15, 25, 35);
+  doc.rect(0, 0, W, 28, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(15); doc.setFont('helvetica', 'bold');
+  doc.text('uSync Afstudeer Feedbackformulier', margin, 12);
+  doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
+  doc.setTextColor(170, 180, 192);
+  doc.text('UNASAT — Bedrijfskundige Informatica', margin, 19);
+  doc.text(`Gegenereerd: ${datum}`, W - margin, 19, { align: 'right' });
+  y = 38;
+
+  doc.setFillColor(247, 244, 239);
+  doc.roundedRect(margin, y, W - margin*2, 28, 3, 3, 'F');
+  doc.setTextColor(138, 130, 120); doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+  doc.text('INGEVULD VOOR', margin+4, y+6);
+  doc.text('INGEVULD DOOR', margin+68, y+6);
+  doc.text('FUNCTIE / ORGANISATIE', margin+120, y+6);
+  doc.setTextColor(15, 25, 35); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+  doc.text('Whitney Mac Intosh (BI/1121/027)', margin+4, y+13);
+  doc.text(invuller, margin+68, y+13);
+  doc.text(functie, margin+120, y+13);
+  doc.setTextColor(100,100,100); doc.setFontSize(8);
+  doc.text(organisatie, margin+120, y+20);
+  y += 36;
+
+  doc.setFillColor(42, 92, 170);
+  doc.roundedRect(margin, y, W - margin*2, 14, 3, 3, 'F');
+  doc.setTextColor(255, 255, 255); doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+  doc.text(selectedComp, margin+5, y+9.5);
+  y += 18;
+
+  doc.setTextColor(100, 100, 100); doc.setFontSize(8); doc.setFont('helvetica', 'italic');
+  const descLines = doc.splitTextToSize(data.omschrijving, W - margin*2);
+  doc.text(descLines, margin, y);
+  y += descLines.length * 4.5 + 6;
+
+  data.secties.forEach((sectie, si) => {
+    if (y > 255) { doc.addPage(); y = 20; }
+    doc.setFillColor(232, 238, 248);
+    doc.roundedRect(margin, y, W - margin*2, 8, 2, 2, 'F');
+    doc.setTextColor(42, 92, 170); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
+    doc.text(sectie.label.toUpperCase(), margin+4, y+5.5);
+    y += 11;
+
+    sectie.items.forEach((item, ii) => {
+      const key = `s${si}_i${ii}`;
+      const score = ratings[key];
+      const leftLines = doc.splitTextToSize(item.links, 68);
+      const rightLines = doc.splitTextToSize(item.rechts, 68);
+      const rowH = Math.max(leftLines.length, rightLines.length) * 4 + 8;
+      if (y + rowH > 275) { doc.addPage(); y = 20; }
+
+      doc.setFillColor(250, 250, 248);
+      doc.rect(margin, y, W - margin*2, rowH, 'F');
+      doc.setDrawColor(214, 207, 196);
+      doc.rect(margin, y, W - margin*2, rowH, 'S');
+
+      doc.setTextColor(138, 130, 120); doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+      doc.text(leftLines, margin+3, y+5);
+
+      const dotStartX = margin + 75;
+      for (let d = 1; d <= 5; d++) {
+        const dx = dotStartX + (d-1)*6;
+        const dy = y + rowH/2;
+        if (score === d) {
+          doc.setFillColor(42, 92, 170);
+          doc.circle(dx, dy, 2.2, 'F');
+          doc.setTextColor(255,255,255); doc.setFontSize(6); doc.setFont('helvetica','bold');
+          doc.text(String(d), dx, dy+1, { align:'center' });
+        } else {
+          doc.setDrawColor(214, 207, 196); doc.setFillColor(255,255,255);
+          doc.circle(dx, dy, 2.2, 'FD');
+          doc.setTextColor(160,155,150); doc.setFontSize(6); doc.setFont('helvetica','normal');
+          doc.text(String(d), dx, dy+1, { align:'center' });
+        }
+      }
+      if (score === 'N/A') {
+        doc.setFillColor(138,130,120); doc.setTextColor(255,255,255);
+        doc.roundedRect(dotStartX+1, y+rowH/2-3, 10, 6, 1, 1, 'F');
+        doc.setFontSize(6); doc.text('N/A', dotStartX+6, y+rowH/2+1, { align:'center' });
+      }
+
+      doc.setTextColor(15, 25, 35); doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+      doc.text(rightLines, dotStartX + 33, y+5);
+      y += rowH + 2;
+    });
+    y += 3;
+  });
+
+  if (y + 16 > 275) { doc.addPage(); y = 20; }
+  doc.setFillColor(15, 25, 35);
+  doc.roundedRect(margin, y, W - margin*2, 16, 3, 3, 'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(8.5); doc.setFont('helvetica', 'bold');
+  doc.text('OVERALL BEOORDELING:', margin+5, y+10);
+  doc.setTextColor(111, 163, 232); doc.setFontSize(13);
+  doc.text(`${overallRating} / 5`, margin+65, y+10);
+  doc.setTextColor(170,180,192); doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+  doc.text(`${data.overallLinks}  ←→  ${data.overallRechts}`, W - margin, y+10, { align:'right' });
+  y += 22;
+
+  // Dit gaat goed & Tips
+  if (y + 30 > 275) { doc.addPage(); y = 20; }
+  doc.setFillColor(247, 244, 239);
+  doc.roundedRect(margin, y, W - margin*2, 30, 3, 3, 'F');
+  doc.setTextColor(42, 92, 170); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
+  doc.text('DIT GAAT GOED:', margin+5, y+7);
+  doc.setTextColor(15,25,35); doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+  const ggLines = doc.splitTextToSize(gaatGoed, W - margin*2 - 10);
+  doc.text(ggLines, margin+5, y+13);
+  doc.setTextColor(42, 92, 170); doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+  doc.text('TIPS:', margin+5, y+22);
+  doc.setTextColor(15,25,35); doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+  const tipsLines = doc.splitTextToSize(tips, W - margin*2 - 10);
+  doc.text(tipsLines, margin+5, y+28);
+  y += 36;
+
+  // Handtekening
+  if (y + 42 > 275) { doc.addPage(); y = 20; }
+  doc.setDrawColor(214, 207, 196);
+  doc.roundedRect(margin, y, W - margin*2, 42, 3, 3, 'S');
+  doc.setTextColor(138,130,120); doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+  doc.text('DIGITALE HANDTEKENING', margin+5, y+8);
+  doc.setTextColor(100,100,100); doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+  doc.text(`${invuller} — ${datum}`, margin+5, y+14);
+  const canvas = document.getElementById('sig-canvas');
+  doc.addImage(canvas.toDataURL('image/png'), 'PNG', margin+5, y+17, 80, 20);
+  y += 48;
+
+  doc.setFillColor(247, 244, 239);
+  doc.rect(0, 287, W, 10, 'F');
+  doc.setTextColor(138,130,120); doc.setFontSize(7);
+  doc.text('uSync Afstudeer Feedbackformulier — UNASAT Bedrijfskundige Informatica', W/2, 293, { align:'center' });
+
+  return doc;
+}
+
+function downloadPDF() {
+  const doc = generatePDF();
+  const invuller = document.getElementById('invuller').value.replace(/\s+/g,'_');
+  doc.save(`Feedback_${selectedComp.replace(/\s+/g,'_')}_${invuller}.pdf`);
+}
+
+async function submitForm() {
+  if (isCanvasEmpty()) { alert('Zet alstublieft uw handtekening.'); return; }
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true; btn.textContent = 'Versturen...';
+
+  const data = competenties[selectedComp];
+  let txt = `FEEDBACKFORMULIER — ${selectedComp.toUpperCase()}\n${'─'.repeat(50)}\n`;
+  txt += `Student: Whitney Mac Intosh (BI/1121/027)\n`;
+  txt += `Ingevuld door: ${document.getElementById('invuller').value}\n`;
+  txt += `Functie: ${document.getElementById('functie').value}\n`;
+  txt += `Organisatie: ${document.getElementById('organisatie').value || 'n.v.t.'}\n`;
+  txt += `Datum: ${new Date().toLocaleDateString('nl-NL')}\n\n`;
+  data.secties.forEach((s, si) => {
+    txt += `${s.label}\n`;
+    s.items.forEach((item, ii) => { txt += `  • ${item.rechts.substring(0,60)} → Score: ${ratings['s'+si+'_i'+ii]}\n`; });
+    txt += '\n';
+  });
+  txt += `OVERALL: ${overallRating}/5\n\n`;
+  txt += `Dit gaat goed: ${document.getElementById('gaat-goed').value || '-'}\n`;
+  txt += `Tips: ${document.getElementById('tips').value || '-'}\n`;
+
+  try {
+    await emailjs.send('service_4f64sim', 'template_8ubuu96', {
+      invuller: document.getElementById('invuller').value,
+      competentie: selectedComp,
+      beoordeling: txt,
+      overall_score: overallRating + '/5',
+      datum: new Date().toLocaleDateString('nl-NL'),
+      functie: document.getElementById('functie').value,
+      organisatie: document.getElementById('organisatie').value || 'n.v.t.',
+      handtekening: document.getElementById('sig-canvas').toDataURL()
+    });
+    document.getElementById('success-comp').textContent = selectedComp;
+    document.querySelector('.steps').style.display = 'none';
+    setStep(5);
+  } catch(err) {
+    console.error(err);
+    alert('Er ging iets mis. Probeer opnieuw.');
+    btn.disabled = false; btn.textContent = '✉ Formulier Versturen';
+  }
+}
+</script>
+</body>
+</html>
